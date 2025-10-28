@@ -40,7 +40,7 @@
             </tr>
         </thead>
         <tbody id="stone-list">
-            <tr><td colspan="5" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>
+            <tr><td></td>colspan="5" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>
         </tbody>
     </table>
 </div>
@@ -113,7 +113,7 @@
     function deleteStone(id, name) {
         if (confirm(`คุณแน่ใจหรือไม่ที่จะลบหิน ${name} (ID: ${id})?`)) {
             alert(`ฟังก์ชัน [ลบ] หิน ID: ${id} จะถูกพัฒนาในขั้นตอนถัดไป`);
-            // **TODO: เพิ่มการเรียก API สำหรับลบข้อมูลจริง**
+            // **TODO: เพิ่มการเรียก API xxสำหรับลบข้อมูลจริง**
         }
     }
 </script>
