@@ -3,120 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบจัดการหินมงคล (Auspicious Stones)</title>
+    <title>เมนูหลัก: ระบบจัดการหินมงคลและสินค้า</title>
     <style>
-        body { font-family: Tahoma, sans-serif; background-color: #f4f4f4; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
-        h1 { text-align: center; color: #4CAF50; }
-        #controls { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        #search-input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 300px; }
-        #add-button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
-        #stone-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        #stone-table th, #stone-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        #stone-table th { background-color: #4CAF50; color: white; }
-        .action-btn { padding: 5px 10px; margin-right: 5px; cursor: pointer; border-radius: 3px; border: none; }
-        .edit-btn { background-color: #ffc107; color: #333; }
-        .delete-btn { background-color: #dc3545; color: white; }
+        body { font-family: Tahoma, sans-serif; background-color: #e6e6e6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .main-menu { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); text-align: center; }
+        h1 { color: #333; margin-bottom: 30px; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .menu-item { background-color: #4CAF50; color: white; padding: 30px 20px; border-radius: 8px; text-decoration: none; font-size: 1.2em; font-weight: bold; transition: background-color 0.3s, transform 0.2s; cursor: pointer; }
+        .menu-item:hover { background-color: #45a049; transform: translateY(-3px); }
+        .menu-item span { display: block; margin-top: 10px; font-size: 0.8em; opacity: 0.8; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>ระบบจัดการหินมงคล</h1>
+<div class="main-menu">
+    <h1>ระบบจัดการคลังสินค้าหินมงคล (K-STONE)</h1>
+    <div class="menu-grid">
+        <a href="pages/stone_list.html" class="menu-item">
+            จัดการรายการหิน 💎
+            <span>(CRUD: Agate, Amethyst, Tiger Eye)</span>
+        </a>
 
-    <div id="controls">
-        <input type="text" id="search-input" placeholder="ค้นหาชื่อไทย, ชื่ออังกฤษ, หรือชื่ออื่น..." onkeyup="fetchStones()">
-        <button id="add-button" onclick="openAddModal()">+ เพิ่มหินใหม่</button>
+        <a href="pages/product_list.html" class="menu-item">
+            จัดการสินค้าหินรายชิ้น 🛍️
+            <span>(CRUD: สร้อยข้อมือ ID 001, แหวน ID 002)</span>
+        </a>
+
+        <a href="pages/model_list.html" class="menu-item" style="grid-column: span 2; background-color: #007bff;">
+            จัดการรูปแบบสินค้า (Models) 🏷️
+            <span>(สร้อยข้อมือ, แหวน, จี้)</span>
+        </a>
     </div>
-
-    <table id="stone-table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>ชื่อไทย</th>
-                <th>ชื่ออังกฤษ</th>
-                <th>คำอธิบาย (ย่อ)</th>
-                <th>การจัดการ</th>
-            </tr>
-        </thead>
-        <tbody id="stone-list">
-            <tr><td></td> colspan="5" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>
-        </tbody>
-    </table>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', fetchStones);
-
-    /**
-     * ดึงข้อมูลหินจาก API และแสดงผลในตาราง
-     */
-    async function fetchStones() {
-        const searchInput = document.getElementById('search-input').value;
-        const stoneList = document.getElementById('stone-list');
-        stoneList.innerHTML = '<tr><td colspan="5" style="text-align: center;">กำลังค้นหาข้อมูล...</td></tr>'; // แสดง Loading
-
-        try {
-            // เรียกใช้ API (api.php) และส่งคำค้นหาไป
-            const response = await fetch(`api.php?action=get_stones&search=${encodeURIComponent(searchInput)}`);
-            const result = await response.json();
-
-            if (result.success && result.data.length > 0) {
-                renderStoneTable(result.data);
-            } else {
-                stoneList.innerHTML = `<tr><td colspan="5" style="text-align: center;">${result.message || 'ไม่พบข้อมูลหินที่ตรงกับคำค้นหา'}</td></tr>`;
-            }
-
-        } catch (error) {
-            console.error('Fetch error:', error);
-            stoneList.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">เกิดข้อผิดพลาดในการเชื่อมต่อ/ดึงข้อมูล</td></tr>';
-        }
-    }
-
-    /**
-     * สร้างแถวตารางจากข้อมูลที่ได้
-     */
-    function renderStoneTable(stones) {
-        const stoneList = document.getElementById('stone-list');
-        stoneList.innerHTML = ''; // ล้างข้อมูลเดิม
-        
-        stones.forEach(stone => {
-            const row = stoneList.insertRow();
-            
-            // จำกัดความยาวคำอธิบายไม่ให้ยาวเกินไป
-            const description_short = stone.description.length > 80 
-                ? stone.description.substring(0, 80) + '...' 
-                : stone.description;
-
-            row.innerHTML = `
-                <td>${stone.id}</td>
-                <td>${stone.thai_name}</td>
-                <td>${stone.english_name}</td>
-                <td>${description_short}</td>
-                <td>
-                    <button class="action-btn edit-btn" onclick="editStone(${stone.id})">แก้ไข</button>
-                    <button class="action-btn delete-btn" onclick="deleteStone(${stone.id}, '${stone.thai_name}')">ลบ</button>
-                </td>
-            `;
-        });
-    }
-
-    // ฟังก์ชันจำลองสำหรับการเพิ่ม/แก้ไข/ลบ
-    function openAddModal() {
-        alert('ฟังก์ชัน [เพิ่มหินใหม่] จะถูกพัฒนาในขั้นตอนถัดไป');
-    }
-
-    function editStone(id) {
-        alert(`ฟังก์ชัน [แก้ไข] หิน ID: ${id} จะถูกพัฒนาในขั้นตอนถัดไป`);
-    }
-
-    function deleteStone(id, name) {
-        if (confirm(`คุณแน่ใจหรือไม่ที่จะลบหิน ${name} (ID: ${id})?`)) {
-            alert(`ฟังก์ชัน [ลบ] หิน ID: ${id} จะถูกพัฒนาในขั้นตอนถัดไป`);
-            // **TODO: เพิ่มการเรียก API สำหรับลบข้อมูลจริง**
-        }
-    }
-</script>
 
 </body>
 </html>

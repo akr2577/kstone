@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD: จัดการรายการหินมงคล</title>
+    <style>
+        /* CSS Styles (ใช้ชุดเดิมเพื่อความเรียบง่าย) */
+        body { font-family: Tahoma, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; color: #4CAF50; }
+        #controls { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        #search-input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 300px; }
+        #add-button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        #stone-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        #stone-table th, #stone-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        #stone-table th { background-color: #4CAF50; color: white; }
+        .action-btn { padding: 5px 10px; margin-right: 5px; cursor: pointer; border-radius: 3px; border: none; }
+        .edit-btn { background-color: #ffc107; color: #333; }
+        .delete-btn { background-color: #dc3545; color: white; }
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+        .form-group label { display: block; margin-top: 10px; font-weight: bold; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        #save-stone-btn { margin-top: 20px; background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>จัดการรายการหินมงคล (64 รายการ)</h1>
+
+    <div id="controls">
+        <input type="text" id="search-input" placeholder="ค้นหาชื่อไทย, ชื่ออังกฤษ..." onkeyup="fetchStones()">
+        <button id="add-button" onclick="openModal('add')">+ เพิ่มหินใหม่</button>
+    </div>
+
+    <table id="stone-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ชื่อไทย</th>
+                <th>ชื่ออังกฤษ</th>
+                <th>คำอธิบาย (ย่อ)</th>
+                <th>สีหลัก</th>
+                <th>การจัดการ</th>
+            </tr>
+        </thead>
+        <tbody id="stone-list">
+            <tr><td colspan="6" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>
+        </tbody>
+    </table>
+    
+    <div style="margin-top: 20px;">
+        <a href="../index.html" style="text-decoration: none; color: #007bff;">&larr; กลับไปเมนูหลัก</a>
+    </div>
+
+</div>
+
+<div id="stoneModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">เพิ่มหินใหม่</h2>
+        
+        <form id="stone-form">
+            <input type="hidden" id="stone-id" name="id">
+            
+            <div class="form-group">
+                <label for="thai_name">ชื่อไทย</label>
+                <input type="text" id="thai_name" name="thai_name" required>
+            </div>
+            <div class="form-group">
+                <label for="english_name">ชื่ออังกฤษ</label>
+                <input type="text" id="english_name" name="english_name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">คำอธิบาย</label>
+                <textarea id="description" name="description" rows="4"></textarea>
+            </div>
+            <button type="submit" id="save-stone-btn">บันทึก</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const API_URL = '../api/stone_api.php';
+    let currentMode = 'add'; // 'add' หรือ 'edit'
+
+    document.addEventListener('DOMContentLoaded', fetchStones);
+    document.getElementById('stone-form').addEventListener('submit', handleFormSubmit);
+
+    /**
+     * ดึงข้อมูลหินจาก API และแสดงผลในตาราง (READ)
+     */
+    async function fetchStones() {
+        const searchInput = document.getElementById('search-input').value;
+        const stoneList = document.getElementById('stone-list');
+        stoneList.innerHTML = '<tr><td colspan="6" style="text-align: center;">กำลังค้นหาข้อมูล...</td></tr>';
+
+        try {
+            const response = await fetch(`${API_URL}?action=get_stones&search=${encodeURIComponent(searchInput)}`);
+            const result = await response.json();
+
+            if (result.success && result.data.length > 0) {
+                renderStoneTable(result.data);
+            } else {
+                stoneList.innerHTML = `<tr><td colspan="6" style="text-align: center;">${result.message || 'ไม่พบข้อมูลหิน'}</td></tr>`;
+            }
+
+        } catch (error) {
+            console.error('Fetch error:', error);
+            stoneList.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">เกิดข้อผิดพลาดในการเชื่อมต่อ/ดึงข้อมูล</td></tr>';
+        }
+    }
+
+    /**
+     * สร้างแถวตารางจากข้อมูลที่ได้
+     */
+    function renderStoneTable(stones) {
+        const stoneList = document.getElementById('stone-list');
+        stoneList.innerHTML = '';
+        
+        stones.forEach(stone => {
+            const row = stoneList.insertRow();
+            const description_short = stone.description.length > 50 
+                ? stone.description.substring(0, 50) + '...' 
+                : stone.description || '-';
+            const color_display = stone.color_ids ? stone.color_ids.replace(/ /g, ', ') : '-'; // แสดง ID สี
+                
+            row.innerHTML = `
+                <td>${stone.id}</td>
+                <td>${stone.thai_name}</td>
+                <td>${stone.english_name}</td>
+                <td>${description_short}</td>
+                <td>${color_display}</td>
+                <td>
+                    <button class="action-btn edit-btn" onclick="editStone(${stone.id})">แก้ไข</button>
+                    <button class="action-btn delete-btn" onclick="deleteStone(${stone.id}, '${stone.thai_name}')">ลบ</button>
+                </td>
+            `;
+        });
+    }
+
+    /**
+     * เปิด Modal สำหรับเพิ่ม/แก้ไข
+     */
+    function openModal(mode, stoneData = {}) {
+        currentMode = mode;
+        document.getElementById('modal-title').innerText = mode === 'add' ? 'เพิ่มหินใหม่' : 'แก้ไขข้อมูลหิน';
+        document.getElementById('stoneModal').style.display = 'block';
+
+        // เคลียร์ฟอร์ม
+        document.getElementById('stone-form').reset(); 
+
+        if (mode === 'edit' && stoneData) {
+            document.getElementById('stone-id').value = stoneData.id;
+            document.getElementById('thai_name').value = stoneData.thai_name;
+            document.getElementById('english_name').value = stoneData.english_name;
+            document.getElementById('description').value = stoneData.description;
+        }
+    }
+
+    /**
+     * ปิด Modal
+     */
+    function closeModal() {
+        document.getElementById('stoneModal').style.display = 'none';
+    }
+
+    /**
+     * เตรียมข้อมูลและเปิด Modal สำหรับแก้ไข (READ by ID)
+     */
+    async function editStone(id) {
+        try {
+            const response = await fetch(`${API_URL}?id=${id}`);
+            const result = await response.json();
+
+            if (result.success && result.data.length > 0) {
+                openModal('edit', result.data[0]);
+            } else {
+                alert('ไม่พบข้อมูลหินที่ต้องการแก้ไข');
+            }
+        } catch (error) {
+            console.error('Edit fetch error:', error);
+            alert('เกิดข้อผิดพลาดในการดึงข้อมูลเพื่อแก้ไข');
+        }
+    }
+
+    /**
+     * จัดการการ Submit ฟอร์ม (CREATE และ UPDATE)
+     */
+    async function handleFormSubmit(event) {
+        event.preventDefault();
+        
+        const id = document.getElementById('stone-id').value;
+        const method = currentMode === 'add' ? 'POST' : 'PUT';
+        const url = API_URL;
+        
+        const formData = {
+            id: id ? parseInt(id) : null,
+            thai_name: document.getElementById('thai_name').value,
+            english_name: document.getElementById('english_name').value,
+            description: document.getElementById('description').value,
+            // (เพิ่มฟิลด์อื่น ๆ ที่นี่)
+        };
+        
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message);
+                closeModal();
+                fetchStones(); // โหลดข้อมูลใหม่หลังจากบันทึก
+            } else {
+                alert(`ดำเนินการไม่สำเร็จ: ${result.message}`);
+            }
+
+        } catch (error) {
+            console.error('Submit error:', error);
+            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        }
+    }
+    
+    /**
+     * ดำเนินการลบข้อมูลหิน (DELETE)
+     */
+    async function deleteStone(id, name) {
+        if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบหิน ${name} (ID: ${id})? ข้อมูลจะถูกลบถาวร!`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(API_URL, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message);
+                fetchStones(); // โหลดข้อมูลใหม่หลังจากลบ
+            } else {
+                alert(`ลบไม่สำเร็จ: ${result.message}`);
+            }
+            
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('เกิดข้อผิดพลาดในการลบข้อมูล');
+        }
+    }
+</script>
+
+</body>
+</html>
