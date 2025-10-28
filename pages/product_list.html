@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD: จัดการสินค้าหินรายชิ้น</title>
+    <style>
+        /* CSS Styles */
+        body { font-family: Tahoma, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; color: #4CAF50; }
+        #controls { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        #search-input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 300px; }
+        #add-button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        #product-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        #product-table th, #product-table td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 0.9em; }
+        #product-table th { background-color: #4CAF50; color: white; }
+        .action-btn { padding: 5px 10px; margin-right: 5px; cursor: pointer; border-radius: 3px; border: none; }
+        .edit-btn { background-color: #ffc107; color: #333; }
+        .delete-btn { background-color: #dc3545; color: white; }
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 800px; border-radius: 8px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .form-group { margin-top: 10px; }
+        .form-group label { display: block; margin-top: 5px; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        #save-product-btn { margin-top: 20px; background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        
+        /* Stone Picker Styles */
+        #stone-list-picker { border: 1px solid #ccc; padding: 10px; max-height: 150px; overflow-y: auto; }
+        .selected-stone-item { display: flex; justify-content: space-between; align-items: center; padding: 5px; margin-bottom: 5px; border-bottom: 1px dotted #eee; }
+        .stone-qty-input { width: 50px; text-align: center; margin-right: 10px; }
+        .remove-stone-btn { background: #dc3545; color: white; border: none; border-radius: 3px; padding: 3px 7px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>จัดการสินค้าหินรายชิ้น (Products CRUD)</h1>
+
+    <div id="controls">
+        <input type="text" id="search-input" placeholder="ค้นหาชื่อสินค้า หรือ SKU..." onkeyup="fetchProducts()">
+        <button id="add-button" onclick="openModal('add')">+ เพิ่มสินค้าใหม่</button>
+    </div>
+
+    <table id="product-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>รูป</th>
+                <th>SKU</th>
+                <th>ชื่อสินค้า</th>
+                <th>รูปแบบ</th>
+                <th>ราคา</th>
+                <th>สต็อก</th>
+                <th>การจัดการ</th>
+            </tr>
+        </thead>
+        <tbody id="product-list">
+            <tr><td colspan="8" style="text-align: center;">กำลังโหลดข้อมูล...</td></tr>
+        </tbody>
+    </table>
+    
+    <div style="margin-top: 20px;">
+        <a href="../index.html" style="text-decoration: none; color: #007bff;">&larr; กลับไปเมนูหลัก</a>
+    </div>
+</div>
+
+<div id="productModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">เพิ่มสินค้าใหม่</h2>
+        
+        <form id="product-form">
+            <input type="hidden" id="product-id" name="id">
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                <div>
+                    <h3>ข้อมูลพื้นฐาน</h3>
+                    <div class="form-group">
+                        <label for="thai_name">ชื่อสินค้า (ไทย)</label>
+                        <input type="text" id="thai_name" name="thai_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="model_id">รูปแบบสินค้า</label>
+                        <select id="model_id" name="model_id" required>
+                            <option value="">-- เลือกรุ่น/รูปแบบ --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="sku">รหัสสินค้า (SKU)</label>
+                        <input type="text" id="sku" name="sku" required>
+                    </div>
+                    <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label for="price">ราคาขาย</label>
+                            <input type="number" id="price" name="price" step="0.01" required>
+                        </div>
+                        <div>
+                            <label for="stock_qty">จำนวนสต็อก</label>
+                            <input type="number" id="stock_qty" name="stock_qty" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="image_url">ลิงก์รูปภาพ (URL)</label>
+                        <input type="url" id="image_url" name="image_url">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">รายละเอียดสินค้า</label>
+                        <textarea id="description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>ส่วนประกอบหิน</h3>
+                    <div class="form-group">
+                        <label for="stone-select">เพิ่มหินเข้าสินค้า</label>
+                        <select id="stone-select">
+                            <option value="">-- เลือกหิน --</option>
+                        </select>
+                        <button type="button" onclick="addStoneToProduct()" style="margin-top: 5px;">เพิ่มหิน</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>หินในสินค้า:</label>
+                        <div id="selected-stones-container" class="stone-list-picker">
+                            </div>
+                    </div>
+                    <input type="hidden" id="stones-data-hidden" name="stones">
+                </div>
+            </div>
+            
+            <button type="submit" id="save-product-btn">บันทึกสินค้า</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const API_URL = '../api/product_api.php';
+    const DATA_URL = '../api/data_api.php';
+    const STONE_URL = '../api/stone_api.php'; // ใช้ดึงข้อมูลหินทั้งหมด
+    let currentMode = 'add'; 
+    let selectedStones = []; // เก็บ Array ของหินที่เลือก [{stone_id: 1, quantity: 1, thai_name: 'Agate'}]
+
+    document.addEventListener('DOMContentLoaded', initializeData);
+    document.getElementById('product-form').addEventListener('submit', handleFormSubmit);
+    document.querySelector('.close').onclick = closeModal;
+
+    async function initializeData() {
+        await populateDropdowns(); // ดึงรูปแบบสินค้า
+        await populateStoneSelector(); // ดึงรายการหินทั้งหมด
+        fetchProducts(); // ดึงรายการสินค้าหลัก
+    }
+
+    // ดึงข้อมูล Models และ Stones สำหรับ Dropdown
+    async function populateDropdowns() {
+        try {
+            // ดึงรูปแบบสินค้า
+            let response = await fetch(`${DATA_URL}?data=models`);
+            let data = await response.json();
+            populateSelect('model_id', data.models, 'name_th', 'id', '-- เลือกรุ่น/รูปแบบ --');
+
+            // ดึงรายการหินทั้งหมดสำหรับ Stone Selector
+            // เราอาจต้องเพิ่มฟังก์ชันใน data_api.php หรือสร้าง stone_api.php?action=get_all
+        } catch (error) {
+            console.error("Error populating dropdowns:", error);
+        }
+    }
+
+    async function populateStoneSelector() {
+        try {
+            const response = await fetch(`${STONE_URL}`); // ดึงหินทั้งหมดจาก stone_api
+            const result = await response.json();
+            if (result.success) {
+                populateSelect('stone-select', result.data, 'thai_name', 'id', '-- เลือกหิน --');
+            }
+        } catch(e) {
+             console.error("Error fetching stones:", e);
+        }
+    }
+
+    function populateSelect(elementId, items, displayKey, valueKey, defaultText) {
+        const select = document.getElementById(elementId);
+        select.innerHTML = `<option value="">${defaultText}</option>`;
+        items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item[valueKey];
+            option.textContent = item[displayKey];
+            select.appendChild(option);
+        });
+    }
+
+    // --- ส่วนจัดการ Stone Picker ---
+
+    function addStoneToProduct() {
+        const selector = document.getElementById('stone-select');
+        const stone_id = parseInt(selector.value);
+        const stone_name = selector.options[selector.selectedIndex].textContent;
+
+        if (stone_id && !selectedStones.some(s => s.stone_id === stone_id)) {
+            selectedStones.push({ stone_id, quantity: 1, thai_name: stone_name });
+            renderSelectedStones();
+        } else if (stone_id) {
+            alert('หินชนิดนี้ถูกเพิ่มไปแล้ว');
+        }
+    }
+
+    function removeStoneFromProduct(stone_id) {
+        selectedStones = selectedStones.filter(s => s.stone_id !== stone_id);
+        renderSelectedStones();
+    }
+
+    function updateStoneQuantity(stone_id, input_element) {
+        const qty = parseInt(input_element.value);
+        const index = selectedStones.findIndex(s => s.stone_id === stone_id);
+        if (index !== -1 && qty >= 1) {
+            selectedStones[index].quantity = qty;
+        } else if (qty < 1) {
+             input_element.value = 1;
+        }
+    }
+
+    function renderSelectedStones() {
+        const container = document.getElementById('selected-stones-container');
+        container.innerHTML = '';
+        document.getElementById('stones-data-hidden').value = JSON.stringify(selectedStones);
+
+        if (selectedStones.length === 0) {
+            container.innerHTML = '<p style="font-size: 0.9em; color: #777;">ยังไม่มีส่วนประกอบหิน</p>';
+            return;
+        }
+
+        selectedStones.forEach(stone => {
+            const div = document.createElement('div');
+            div.className = 'selected-stone-item';
+            div.innerHTML = `
+                <span style="flex: 1;">${stone.thai_name}</span>
+                <div>
+                    <input type="number" min="1" class="stone-qty-input" value="${stone.quantity}" 
+                           onchange="updateStoneQuantity(${stone.stone_id}, this)">
+                    <button type="button" class="remove-stone-btn" onclick="removeStoneFromProduct(${stone.stone_id})">ลบ</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+
+    // --- ส่วนจัดการ CRUD หลัก ---
+
+    async function fetchProducts() {
+        const searchInput = document.getElementById('search-input').value;
+        const productList = document.getElementById('product-list');
+        productList.innerHTML = '<tr><td colspan="8" style="text-align: center;">กำลังค้นหาข้อมูล...</td></tr>';
+        
+        const params = new URLSearchParams({ search: searchInput }).toString();
+
+        try {
+            const response = await fetch(`${API_URL}?${params}`);
+            const result = await response.json();
+
+            if (result.success && result.data.length > 0) {
+                renderProductTable(result.data);
+            } else {
+                productList.innerHTML = `<tr><td colspan="8" style="text-align: center;">${result.message || 'ไม่พบสินค้า'}</td></tr>`;
+            }
+
+        } catch (error) {
+            console.error('Fetch error:', error);
+            productList.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">เกิดข้อผิดพลาดในการเชื่อมต่อ/ดึงข้อมูล</td></tr>';
+        }
+    }
+
+    function renderProductTable(products) {
+        const productList = document.getElementById('product-list');
+        productList.innerHTML = '';
+        
+        products.forEach(p => {
+            const row = productList.insertRow();
+            const imageHtml = p.image_url ? `<img src="${p.image_url}" alt="${p.thai_name}" style="width: 50px; height: 50px; object-fit: cover;">` : '-';
+                
+            row.innerHTML = `
+                <td>${p.id}</td>
+                <td>${imageHtml}</td>
+                <td>${p.sku}</td>
+                <td>${p.thai_name}</td>
+                <td>${p.model_name}</td>
+                <td>${parseFloat(p.price).toFixed(2)}</td>
+                <td>${p.stock_qty}</td>
+                <td>
+                    <button class="action-btn edit-btn" onclick="editProduct(${p.id})">แก้ไข</button>
+                    <button class="action-btn delete-btn" onclick="deleteProduct(${p.id}, '${p.thai_name}')">ลบ</button>
+                </td>
+            `;
+        });
+    }
+
+    function openModal(mode, productData = {}) {
+        currentMode = mode;
+        document.getElementById('modal-title').innerText = mode === 'add' ? 'เพิ่มสินค้าใหม่' : 'แก้ไขข้อมูลสินค้า';
+        document.getElementById('productModal').style.display = 'block';
+
+        document.getElementById('product-form').reset(); 
+        selectedStones = []; 
+
+        if (mode === 'edit' && productData) {
+            document.getElementById('product-id').value = productData.id;
+            document.getElementById('thai_name').value = productData.thai_name;
+            document.getElementById('model_id').value = productData.model_id;
+            document.getElementById('sku').value = productData.sku;
+            document.getElementById('price').value = productData.price;
+            document.getElementById('stock_qty').value = productData.stock_qty;
+            document.getElementById('image_url').value = productData.image_url;
+            document.getElementById('description').value = productData.description;
+            
+            // โหลดหินที่เลือกมา
+            selectedStones = productData.stones.map(s => ({
+                stone_id: parseInt(s.stone_id),
+                quantity: parseInt(s.quantity),
+                thai_name: s.thai_name
+            }));
+        }
+        renderSelectedStones();
+    }
+
+    function closeModal() {
+        document.getElementById('productModal').style.display = 'none';
+    }
+
+    async function editProduct(id) {
+        try {
+            const response = await fetch(`${API_URL}?id=${id}`);
+            const result = await response.json();
+
+            if (result.success && result.data.length > 0) {
+                openModal('edit', result.data[0]);
+            } else {
+                alert('ไม่พบข้อมูลสินค้าที่ต้องการแก้ไข');
+            }
+        } catch (error) {
+            console.error('Edit fetch error:', error);
+            alert('เกิดข้อผิดพลาดในการดึงข้อมูลเพื่อแก้ไข');
+        }
+    }
+
+    async function handleFormSubmit(event) {
+        event.preventDefault();
+        
+        const id = document.getElementById('product-id').value;
+        const method = currentMode === 'add' ? 'POST' : 'PUT';
+        
+        const formData = {
+            id: id ? parseInt(id) : null,
+            model_id: parseInt(document.getElementById('model_id').value),
+            thai_name: document.getElementById('thai_name').value,
+            sku: document.getElementById('sku').value,
+            price: parseFloat(document.getElementById('price').value),
+            stock_qty: parseInt(document.getElementById('stock_qty').value),
+            image_url: document.getElementById('image_url').value,
+            description: document.getElementById('description').value,
+            stones: selectedStones.map(s => ({ stone_id: s.stone_id, quantity: s.quantity })) // ส่งเฉพาะ ID และ Qty
+        };
+
+        if (formData.stones.length === 0) {
+            alert('กรุณาเลือกส่วนประกอบหินอย่างน้อย 1 ชนิด');
+            return;
+        }
+        
+        try {
+            const response = await fetch(API_URL, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message);
+                closeModal();
+                fetchProducts(); 
+            } else {
+                alert(`ดำเนินการไม่สำเร็จ: ${result.message}`);
+            }
+
+        } catch (error) {
+            console.error('Submit error:', error);
+            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        }
+    }
+    
+    async function deleteProduct(id, name) {
+        if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบสินค้า ${name} (ID: ${id})? ข้อมูลจะถูกลบถาวร!`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(API_URL, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message);
+                fetchProducts(); 
+            } else {
+                alert(`ลบไม่สำเร็จ: ${result.message}`);
+            }
+            
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการลบข้อมูล');
+        }
+    }
+</script>
+
+</body>
+</html>
